@@ -1,0 +1,182 @@
+\documentclass[12pt]{article}
+
+
+\usepackage{verbatim}   % useful for program listings
+\usepackage{hyperref}   % use for hypertext links, including those to external documents and URLs
+
+% don't need the following. simply use defaults
+\setlength{\baselineskip}{16.0pt}    % 16 pt usual spacing between lines
+
+\setlength{\parskip}{3pt plus 2pt}
+\setlength{\parindent}{20pt}
+\setlength{\oddsidemargin}{0.5cm}
+\setlength{\evensidemargin}{0.5cm}
+\setlength{\marginparsep}{0.75cm}
+\setlength{\marginparwidth}{2.5cm}
+\setlength{\marginparpush}{1.0cm}
+\setlength{\textwidth}{150mm}
+
+
+% above is the preamble
+
+\begin{document}
+
+\begin{center}
+{\large Lattice: A Multi-module Java Build System written in Python (Draft)} \\
+\copyright 2010 by Zhenlei Cai \\
+December 27, 2010
+\end{center}
+
+\section{Overview}
+In Lattice build files are written not in XML, but in the Python
+language. The benefits are much better readability and powerful
+imperative build scripting supported by Python. 
+
+For multi-module projects. Lattice uses topological sorting to decide
+the correct order to build each module.  It's also planned that
+Lattice will analyze the module
+dependency to determine how the module compilation can be
+parallelized.
+
+Lattice's source code is extremely lean, currently it consists of
+about 500 lines of Python source code.
+
+Lattice supports generating Eclipse projects from the build files.
+
+
+\section{Five Minute  Introduction}
+A simple Lattice build file can be as short as two lines:
+
+\begin{verbatim}
+# build file module1/__init__.py
+depends = [ 'module2']
+libs = ['logging', 'commons']
+\end{verbatim}
+
+A typical module is a directory that contains Java source files which
+are built into a single JAR file. A library is a directory that
+contains one or more  third party binary JAR files required for
+compiling or running modules. Lattice's build files are named {\it  \_\_init\_\_.py}. 
+Here   {\it module1/\_\_init\_\_.py}  states module1 depends on another
+module (module2) 
+and two libraries: logging and commons.  On disk the files layout for such a two module project is:
+
+\begin{verbatim}
+    -- module1 --+-- __init__.py
+                 |
+                 +－ src / main /java /  (Java sources)
+
+    -- module2 --+-- __init__.py
+                 |
+                 +－ src / main /java / ... (Java sources)
+
+    -- libs -----+--- logging / log4j.jar, slf4j-api.jar, slf4j-log4j.jar ...
+                 |
+                 +-- commons / commons-lang.jar, commons-io.jar, commons-codec.jar ...
+\end{verbatim}
+Here {\it logging} is a user defined library (UDL) that consists of log4j and SLF4J's binding for log4j. {\it commons} is another  UDL that contains a few Apache Commons libraries. 
+
+To build module1 and module2, type:
+
+{\it   lat -m module1 -t jar\_all} 
+
+This will compile all the Java source code in module2 and then module1
+and create \emph{module1/target/module1.jar} and module2/target/module2.jar
+
+
+\section{Tasks}
+
+A typical Lattice command is in the form of :
+
+\begin{verbatim}
+lat -m <module> -t <task>
+\end{verbatim}
+
+Lattice has several system built-in tasks: {\it
+  build,clean,clean\_local,jar,jar\_all, junit, run\_java\_class,
+  war
+}.
+It's also easy to have per-module user-defined tasks, for example, you
+can add a Python function to the build file:
+
+\begin{verbatim}
+def run_multiple_java_programs ():
+    tasks.run_java_class(__name__, 'com.mycompany.JavaProg1', 'arg1',
+mx='1024m')
+    tasks.run_java_class(__name__, 'com.mycompany.JavaProg2', 'arg2',
+mx='512m')
+\end{verbatim}
+
+Here a custom task {\tt run\_multiple\_java\_programs}  is defined to run two Java classes with specific
+arguments and JVM memory settings. The classpath settings needed for
+running the classes will be automatically calculated by Lattice. The
+task can be invoked as:
+\begin{verbatim}
+lat -m mymodule -t run_multiple_java_programs
+\end{verbatim}
+Because a custom task is just a regular Python function, and Python is
+a very high-level language well suited for invoking operating system
+commands, shell scripts and other programs , a
+custom task can be created to do almost any types of work. It should
+be easy to invoke other Java build systems such as ant, maven or ivy in
+a custom task.
+
+\section{Installation}
+
+Source code:  {\tt https://github.com/hackingspirit/Lattice}  .
+To download a tar ball:
+https://github.com/hackingspirit/Lattice/tarball/master  .
+To check out a read-only copy: 
+
+\begin{verbatim}
+git clone git://github.com/hackingspirit/Lattice.git
+\end{verbatim}
+
+
+To install:
+\begin{verbatim}
+sudo python setup.py install
+\end{verbatim}
+This will install lattice into your Python system path. 
+To run Lattice, copy the shell script "lat"  to a directory that's in your executable search PATH, such as /usr/bin .   Type "lat -h" to see a list of options.
+
+\section{A multi-module Java Web Project Example}
+A seven-module sample project where the topmost module builds into a .war
+file is included in the source distribution. For details 
+please see README file under the sample\_java\_prj/ folder of the distribution.
+
+\section{Eclipse Support}
+To generate Eclipse projects:
+\begin{verbatim}
+lat --eclipse-gen 
+\end{verbatim}
+
+Each module or library is converted to one Eclipse project.  In
+addition a projectList.txt file is created which can be used to import
+all the projects into Eclipse at once using the
+excellent Eclipse bulk import tool
+(http://code.nomad-labs.com/eclipse-bulk-import/) .
+
+
+\section{Some Build Details}
+The default task is {\it build}, when executed Lattice compiles all the dependent
+modules transitively first (unless the {\it
+  --disable-transitive-dependencies} flag is on) and then compiles the
+module being built. A Java source file (.java) is only (re)compiled if
+it's newer than its corresponding .class file.  
+
+By default Java sources are found in {\tt src/main/java}, resource
+files are under {\tt src/main/resources}, web files (JSP, HTML etc)
+are under {\tt src/main/web}, JAR's and WAR's are built into {\tt
+  ./target/} and intermediate files (.class etc) are saved in {\tt build/}.  
+These settings are defined in the file {\it settings.py} and can be easily customized.
+
+
+
+\section{Future Work}
+
+Parallel builds, detect library collisions (different versions of same
+library/package etc), various plugin-tasks (GWT, ...)
+
+
+\end{document}

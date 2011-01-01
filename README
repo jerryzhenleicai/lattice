@@ -1,0 +1,22 @@
+Lattice is  tool building Java projects, it's designed with multi-module support as the primary goal.  In Lattice build files are written not in XML, but in the Python language. The benefits are much better readability and powerful imperative build scripting supported by Python. For multi-module projects. Lattice uses topological sorting to decide the correct order to build each module. It’s also planned that Lattice will analyze the module dependency to determine how the module compilation can be parallelized. Lattice’s source code is extremely lean, currently it consists of about 500 lines of Python source code. Lattice supports generating Eclipse projects from the build files.
+
+
+INSTALL:
+
+First make sure you have Python 2.5 or above in your system. Lattice currently is only tested on Unix family operating systems such as Linux and Mac OS X. If you are running Windows, please install Cygwin first.
+
+To install Lattice, type "sudo python setup.py install".
+
+To run Lattice, type "./lat" or copy the shell script "lat" in this directory to a directory that's in your executable search PATH, such as /usr/bin .   Type "lat -h" to see a list of options.
+
+SAMPLE PROJECT:
+
+To see how Lattice can be used to build JAR and WAR files, go to the "sample_java_prj" directory and try some sample build commands listed in the README file in that directory. 
+
+To generate Eclipse project files for all the modules, type "lat  --eclipse-gen", then use the Eclipse bulk import plugin from http://code.nomad-labs.com/eclipse-bulk-import/ to import all the projects into Eclipse at once.
+
+DOCUMENTATION:
+
+To learn more about Lattice, please read the manual.pdf file in the doc/ folder. 
+
+ 

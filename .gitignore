@@ -1,0 +1,13 @@
+MANIFEST
+dist
+build
+target
+*.pyc
+.project
+.classpath
+.metadata
+projectList.txt
+ecl_classes
+.pydevproject
+.ropeproject
+.DS_Store

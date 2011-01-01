@@ -1,0 +1,87 @@
+
+This project has seven modules: a,b,c,d,E_a-b-c,F_c-d and G_E-d.  The first six modules are built into JAR's while the final module (G_E-d) is a Java servlet/JSP project that's built into a WAR file. The naming convention of the modules is <module_id>_<dependen_module1>-<dependent_module2> ... <dependent_modulek>. For example, module G_E-d depends on modules E_a-b-c and module d. Please open the build files __init__.py in each of the seven directories to understand the exact dependecy relationships.
+
+Under the lib folder, there are two user defined libraries: logging and commons.  logging contains JARs for log4j and SLF4J’s binding for log4j. commons contains a few Apache Commons libraries. These are used by various modules above.  
+
+When running the  "lat" command, the current working directory needs to be the top level directory of the project (the one hosting the lib/ and module directories). The following are some sample command lines ($ is the shell prompt).
+
+1. Show dependencies of a module:
+  $ lat -D -m G_E-d
+
+Output:
+Scanning for jars under lib ...
+Listing dependencies of module G_E-d: 
+Modules it depends on (including indirect ones): a,c,b,d,E_a-b-c.
+Libraries it depends on (including indirect ones): logging,commons.
+
+2. Compile module G_E-d and all its dependencies
+
+  $ lat -m G_E-d -t build -v
+
+The flag "-v" means verbose. Here is the output: 
+
+Scanning for jars under lib ...
++----------------------- Building G_E-d ----------------------------------------------------- 
+| all modules related to G_E-d : a, b, c, E_a-b-c, d, G_E-d
+| pairwise dependencies : G_E-d -> E_a-b-c,  G_E-d -> d,  E_a-b-c -> a,  E_a-b-c -> b,  E_a-b-c -> c
+| compiling all modules in this order:  ['a', 'b', 'c', 'E_a-b-c', 'd', 'G_E-d']
++---------------------------------------------------------------------------------------------
+--------------------- 
+ Compiling a 
+javac -encoding utf-8  -cp lib/logging/log4j-1.2.14.jar:lib/logging/slf4j-api-1.6.1.jar:lib/logging/slf4j-log4j12-1.6.1.jar:a/build/classes -d a/build/classes a/src/main/java/org/lattice/examples/A.java
+--------------------- 
+ Compiling b 
+javac -encoding utf-8  -cp lib/logging/log4j-1.2.14.jar:lib/logging/slf4j-api-1.6.1.jar:lib/logging/slf4j-log4j12-1.6.1.jar:b/build/classes -d b/build/classes b/src/main/java/org/lattice/examples/B.java
+--------------------- 
+ Compiling c 
+javac -encoding utf-8  -cp lib/logging/log4j-1.2.14.jar:lib/logging/slf4j-api-1.6.1.jar:lib/logging/slf4j-log4j12-1.6.1.jar:c/build/classes -d c/build/classes c/src/main/java/org/lattice/examples/C.java
+--------------------- 
+ Compiling E_a-b-c 
+javac -encoding utf-8  -cp lib/logging/log4j-1.2.14.jar:lib/logging/slf4j-api-1.6.1.jar:lib/logging/slf4j-log4j12-1.6.1.jar:lib/commons/commons-codec-1.4.jar:lib/commons/commons-lang-2.1.jar:a/build/classes:c/build/classes:b/build/classes:E_a-b-c/build/classes -d E_a-b-c/build/classes E_a-b-c/src/main/java/org/lattice/examples/E.java
+--------------------- 
+ Compiling d 
+javac -encoding utf-8  -cp lib/logging/log4j-1.2.14.jar:lib/logging/slf4j-api-1.6.1.jar:lib/logging/slf4j-log4j12-1.6.1.jar:d/build/classes -d d/build/classes d/src/main/java/org/lattice/examples/D.java
+--------------------- 
+ Compiling G_E-d 
+javac -encoding utf-8  -cp lib/logging/log4j-1.2.14.jar:lib/logging/slf4j-api-1.6.1.jar:lib/logging/slf4j-log4j12-1.6.1.jar:lib/commons/commons-codec-1.4.jar:lib/commons/commons-lang-2.1.jar:a/build/classes:c/build/classes:b/build/classes:d/build/classes:E_a-b-c/build/classes:G_E-d/build/classes:G_E-d/build/classes -d G_E-d/build/classes G_E-d/src/main/java/org/lattice/G.java
+
+The compiled .class files are saved in build/classes subdirectory of each module.
+
+
+3. Create a WAR file 
+ 
+  $ lat -m G_E-d/ -t war
+
+lat -m G_E-d/ -t war 
+Scanning for jars under lib ...
+--------------------- 
+ Compiling a 
+--------------------- 
+ Compiling b 
+--------------------- 
+ Compiling c 
+--------------------- 
+ Compiling E_a-b-c 
+--------------------- 
+ Compiling d 
+--------------------- 
+ Compiling G_E-d 
+Creating G_E-d.jar in G_E-d/target
+jar cf G_E-d/target/G_E-d.jar -C G_E-d/build/classes .
+Creating E_a-b-c.jar in E_a-b-c/target
+jar cf E_a-b-c/target/E_a-b-c.jar -C E_a-b-c/build/classes .
+Creating a.jar in a/target
+jar cf a/target/a.jar -C a/build/classes .
+Creating b.jar in b/target
+jar cf b/target/b.jar -C b/build/classes .
+Creating c.jar in c/target
+jar cf c/target/c.jar -C c/build/classes .
+Creating d.jar in d/target
+jar cf d/target/d.jar -C d/build/classes .
+ ---- deleting staging dir G_E-d/build/war
+----- Copy all files under G_E-d/src/main/web to staging dir G_E-d/build/war 
+----- Prepare jars in the war file 
+These jars will be copied into the WEB-INF/lib directory : ['lib/logging/log4j-1.2.14.jar', 'lib/logging/slf4j-api-1.6.1.jar', 'lib/logging/slf4j-log4j12-1.6.1.jar', 'lib/commons/commons-codec-1.4.jar', 'lib/commons/commons-lang-2.1.jar', 'a/target/a.jar', 'c/target/c.jar', 'b/target/b.jar', 'd/target/d.jar', 'E_a-b-c/target/E_a-b-c.jar', 'G_E-d/target/G_E-d.jar', 'G_E-d/target/G_E-d.jar']
+jar cf G_E-d/target/G_E-d.war -C G_E-d/build/war .
+ ----- Successfully built G_E-d/target/G_E-d.war 
+
