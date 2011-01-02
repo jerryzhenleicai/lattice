@@ -11,6 +11,9 @@ war_tmp_folder = 'build/war'
 lib_path = 'lib'
 dirs_to_clean = ['target', 'build', 'ecl_classes']
 
+def src_dir(module):
+    return module + os.sep + java_src
+
 def class_dir(module):
     return module + os.sep + class_output
 

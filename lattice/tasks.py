@@ -85,7 +85,7 @@ def _compile(mod):
     # compile .java's that are obsolete wrt their corresponding .class files
     print '--------------------- \n Compiling %s ' % mod
             
-    cmd = 'javac -encoding utf-8  %s -d %s %s' % (classpath, class_output,  ' '.join(java_srcs))
+    cmd = 'javac -g -encoding utf-8  %s -d %s %s' % (classpath, class_output,  ' '.join(java_srcs))
     if options.verbose:
         max_cmp_len = 1000 
         if len(cmd) < max_cmp_len or options.debug:
@@ -128,15 +128,19 @@ def build(mod):
     # See which moduls can be built in parallel,
     map(_compile, sorted_mods)
 
-def run_java_class(module, main_class, *args, **dict_p):
-    # assume module has already been compiled
+def run(module, main_class, *args, **dict_p):
+    # ensure module has already been compiled
+    build(module)
     print 'Running Java class %s in module %s\n' % (main_class, module)
-    classpath = modules.get_class_path_for_mod(module)
+    classpath = modules.get_class_path_for_mod(module) 
     # assume any named args are JVM options
     java = 'java '
     if len(dict_p) > 0:
         for (key, val) in dict_p.items():
-            java += ('-X' + key) +  val
+            if key == 'extra_class_path':
+                classpath = classpath + ':' + val
+            else:
+                java += ('-X' + key) +  val
     cmd = java  + ' -cp ' + classpath + " "  + main_class + ' ' + ' '.join(args)
     print cmd
     ok = os.system(cmd)
@@ -144,6 +148,8 @@ def run_java_class(module, main_class, *args, **dict_p):
         print ' ##### Failed to run class %s for module %s, have you built the module first? ' % (main_class, module)
         sys.exit(ok)
 
+def gwt_compile(module, entry_class):
+    run(module,  'com.google.gwt.dev.Compiler', '-style OBF', entry_class, mx='500m', extra_class_path=settings.src_dir(module))
 
 def jar(module):
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
@@ -187,7 +193,9 @@ def junit(module, main_class, *args, **dict_p):
     print 'Not implemented Running test %s in module %s\n' % (main_class, module)
     # TODO where to put junit.jar?
 
-def war(module, web_root_dir=settings.web_root):
+
+
+def war0(module, web_root_dir=settings.web_root):
     """
     create a war file where all the dependent module and library jars are put under WEB-INF/lib
 
@@ -228,8 +236,10 @@ def war(module, web_root_dir=settings.web_root):
     print '----- Prepare jars in the war file '
     for jar_file in web_inf_jars:
         shutil.copyfile(jar_file, web_inf_lib_dir + os.path.sep + os.path.basename(jar_file))
+    return web_inf_jars
 
-    
+def war(module, web_root_dir=settings.web_root):
+    web_inf_jars = war0(module, web_root_dir)
     print 'These jars will be copied into the WEB-INF/lib directory :', web_inf_jars
     war_file = module + os.path.sep + settings.war_output + os.path.sep + module + '.war'
     cmd = 'jar cf %s -C %s .' % (war_file, war_staging_dir)
@@ -242,3 +252,5 @@ def war(module, web_root_dir=settings.web_root):
         print ' ----- Successfully built %s ' % war_file
     # delete staging dir ? 
     #shutil.rmtree(
+
+

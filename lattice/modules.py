@@ -1,6 +1,5 @@
 import os, sys
 import pdlibs
-import topo_sort
 import settings
 
 # a hash map mapping from module name to its  Python module object
@@ -76,12 +75,12 @@ def collect_dependencies(top_mod):
 
 def get_class_path_for_mod(mod, jar_only = False):
     """
-    Build the class path needed for running module 
+    Build the class path needed for running module, excluding the module itself 
     """
     class_output = mod + os.sep + settings.class_output
     collect_dependencies(mod)
     dep_libs = mod_dep_libs[mod]
-    
+    # first add all the libraries
     if len(dep_libs) == 0:
         classpath = ""
     else:
