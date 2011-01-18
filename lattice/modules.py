@@ -75,7 +75,7 @@ def collect_dependencies(top_mod):
 
 def get_class_path_for_mod(mod, jar_only = False):
     """
-    Build the class path needed for running module, excluding the module itself 
+    Build the class path needed for running module, including the module itself 
     """
     class_output = mod + os.sep + settings.class_output
     collect_dependencies(mod)
@@ -96,6 +96,7 @@ def get_class_path_for_mod(mod, jar_only = False):
             classpath = classpath + ':' + dep + os.sep + settings.jar_output + os.sep + dep + '.jar'
         else:
             classpath = classpath + ':' + dep + os.sep + settings.class_output
+
     return classpath
        
             

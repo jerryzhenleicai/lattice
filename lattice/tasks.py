@@ -64,6 +64,7 @@ def _compile(mod):
 
     # if there are properties and XML config files in src, copy them to classes
     props = _get_srcs_below_dir(src_dir, '.properties') + _get_srcs_below_dir(src_dir, '.xml')
+    props = filter(lambda x : _is_derived_out_of_date(x, x.replace(src_dir, settings.class_output)), props)
     if len(props) > 0:
         for prop in props:
             path = prop[len(src_dir):]
@@ -153,21 +154,29 @@ def gwt_compile(module, entry_class):
 
 def jar(module):
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
-    
-    if not os.path.exists(settings.class_dir(module)):
+    cls_dir = settings.class_dir(module)
+    if not os.path.exists(cls_dir):
         print '##### No classes found in module build directory %s, unable to create jar. Maybe you need to run the build task ("-t build") first? ' % settings.class_dir(module)
         #sys.exit(1)
         return
     
     if not os.path.exists(settings.jar_dir(module)):
         os.makedirs(settings.jar_dir(module))
-        
-    cmd = 'jar cf %s/%s.jar -C %s .' % (settings.jar_dir(module), module, settings.class_dir(module)) 
-    print cmd
-    ok = os.system(cmd)
-    if ok != 0:
-        print ' ##### Failed to package jar file for module %s ' % (module)
-        sys.exit(ok)    
+
+    jar_file = '%s/%s.jar' % (settings.jar_dir(module), module)  
+
+    # only jar if classes changed
+    classes = _get_srcs_below_dir(cls_dir)
+    classes = filter(lambda x : _is_derived_out_of_date(x, jar_file), classes)
+    if len(classes) > 0:
+        cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir) 
+        print cmd
+        ok = os.system(cmd)
+        if ok != 0:
+            print ' ##### Failed to package jar file for module %s ' % (module)
+            sys.exit(ok)
+    else:
+        print "Skipped as the jar is up-to-date"
 
 
 def jar_all(module):
@@ -197,9 +206,8 @@ def junit(module, main_class, *args, **dict_p):
 
 def war0(module, web_root_dir=settings.web_root):
     """
-    create a war file where all the dependent module and library jars are put under WEB-INF/lib
-
     web_root root folder of the web files (HTML JSP etc)
+    Return: list of WEB-INF/lib jars in the staging directory
     """
     # verify web root
     web_root = module + os.path.sep + web_root_dir
@@ -218,7 +226,6 @@ def war0(module, web_root_dir=settings.web_root):
         if not os.path.exists(jar_file):
             print "Jar file required for building WAR does not exist : %s, Rebuilding %s.jar and all its dependent module jars. " % (jar_file, module)
             jar_all(module)
-            break
     
     
     # create the staging directory for WAR
@@ -239,9 +246,15 @@ def war0(module, web_root_dir=settings.web_root):
     return web_inf_jars
 
 def war(module, web_root_dir=settings.web_root):
+    """
+    create a war file where all the dependent module and library jars are put under WEB-INF/lib
+
+    web_root root folder of the web files (HTML JSP etc)
+    """
     web_inf_jars = war0(module, web_root_dir)
     print 'These jars will be copied into the WEB-INF/lib directory :', web_inf_jars
     war_file = module + os.path.sep + settings.war_output + os.path.sep + module + '.war'
+    war_staging_dir = module + os.path.sep + settings.war_tmp_folder
     cmd = 'jar cf %s -C %s .' % (war_file, war_staging_dir)
     print cmd
     ok = os.system(cmd)

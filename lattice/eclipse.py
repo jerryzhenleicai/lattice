@@ -4,16 +4,8 @@ import modules
 import pdlibs
 import settings
 
-def gen_proj(mod, lib = False):
-    """
-    Write the .project file 
-    """
-    if lib :
-        fdir = settings.lib_path + '/' + mod
-    else:
-        fdir = mod
-    prj = open(fdir + '/.project', 'w')
-    prj.write(\
+ecl_prj_types = {
+    'java' :
 """<?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 \t<name>%s</name>
@@ -31,9 +23,48 @@ def gen_proj(mod, lib = False):
 \t\t<nature>org.eclipse.jdt.core.javanature</nature>
 \t</natures>
 </projectDescription>
-""" % mod)
-    prj.close()
+""" ,  'javascript' :
+    
+"""<?xml version="1.0" encoding="UTF-8"?>
+<projectDescription>
+\t<name>%s</name>
+\t<comment></comment>
+\t<projects>
+\t</projects>
+\t<buildSpec>
+\t\t<buildCommand>
+\t\t\t<name>org.eclipse.wst.jsdt.core.javascriptValidator</name>
+\t\t\t<arguments>
+\t\t\t</arguments>
+\t\t</buildCommand>
+\t</buildSpec>
+\t<natures>
+\t\t<nature>org.eclipse.wst.jsdt.core.jsNature</nature>
+\t</natures>
+</projectDescription>
+"""
+    }
 
+    
+
+def gen_proj(mod, lib, module):
+    """
+    Write the .project file
+    Return True if it's a Java or jar project 
+    """
+    if lib :
+        fdir = settings.lib_path + '/' + mod
+    else:
+        fdir = mod
+    prj = open(fdir + '/.project', 'w')
+    etype = 'java'
+    if module:
+        if hasattr(module,'eclipse_type'):
+            etype = module.eclipse_type
+    prj.write(ecl_prj_types[etype] % mod)
+    prj.close()
+    return etype == 'java'
+    
 def gen_module(mod, dep_mods, dep_libs, dry_run = False, verbose = False):
     """
     Generate the eclipse .project and .classpath files for a module including transitive dependencies
@@ -44,7 +75,9 @@ def gen_module(mod, dep_mods, dep_libs, dry_run = False, verbose = False):
     """
     module = __import__(mod)
     # gen .classpath
-    gen_proj(mod)
+    is_java = gen_proj(mod, False, module)
+    if not is_java:
+        return
     clspath = \
 """<?xml version="1.0" encoding="UTF-8"?>
 <classpath>
@@ -64,7 +97,7 @@ def gen_module(mod, dep_mods, dep_libs, dry_run = False, verbose = False):
 
 
 def gen_lib(mod, dry_run = False, verbose = False):
-    gen_proj(mod, True)
+    gen_proj(mod, True, None)
     clspath = \
 """<?xml version="1.0" encoding="UTF-8"?>
 <classpath>
