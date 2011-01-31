@@ -19,7 +19,7 @@ def run_task(module_name, task, args):
 
     if hasattr(module, task):
         task_method = getattr(module, task)
-        task_method()
+        task_method(module_name)
     elif hasattr(tasks, task):
         task_method = getattr(tasks, task)
         if not args is None:

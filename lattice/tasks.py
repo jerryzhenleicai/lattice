@@ -1,8 +1,9 @@
 import modules
-import os, sys
+import os, sys, multiprocessing
 import settings
 import shutil
-import topo_sort
+import pdlibs
+import topo_sort, parmap
 
 options = None
 
@@ -140,6 +141,9 @@ def run(module, main_class, *args, **dict_p):
         for (key, val) in dict_p.items():
             if key == 'extra_class_path':
                 classpath = classpath + ':' + val
+            elif key == 'run_libs' : # extra run time only libraries
+                for lib in val.split(','):
+                    classpath = classpath + ':' + ':'.join(pdlibs.lib_jar_files[lib])
             else:
                 java += ('-X' + key) +  val
     cmd = java  + ' -cp ' + classpath + " "  + main_class + ' ' + ' '.join(args)
@@ -149,8 +153,19 @@ def run(module, main_class, *args, **dict_p):
         print ' ##### Failed to run class %s for module %s, have you built the module first? ' % (main_class, module)
         sys.exit(ok)
 
-def gwt_compile(module, entry_class):
-    run(module,  'com.google.gwt.dev.Compiler', '-style OBF', entry_class, mx='500m', extra_class_path=settings.src_dir(module))
+def gwt_compile(job):
+    (module, entry_class) = job
+    cores = 1 # parallelize not at browser permutation level, but GWT module level
+    run(module,  'com.google.gwt.dev.Compiler', '-style OBF', '-localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(module))
+
+
+def build_gwts_in_web(module_name):
+    build(module_name)
+    module = modules.mod_name_mapping[module_name]
+    if hasattr(module, 'gwt_modules'):
+        cores = multiprocessing.cpu_count()
+        parmap.parmap(gwt_compile, cores,  module.gwt_modules)
+    
 
 def jar(module):
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
