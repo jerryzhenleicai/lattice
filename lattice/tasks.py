@@ -145,7 +145,7 @@ def run(module, main_class, *args, **dict_p):
                 for lib in val.split(','):
                     classpath = classpath + ':' + ':'.join(pdlibs.lib_jar_files[lib])
             else:
-                java += ('-X' + key) +  val
+                java = java + ('-X' + key) + val + ' ' 
     cmd = java  + ' -cp ' + classpath + " "  + main_class + ' ' + ' '.join(args)
     print cmd
     ok = os.system(cmd)
