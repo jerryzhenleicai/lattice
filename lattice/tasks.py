@@ -154,17 +154,25 @@ def run(module, main_class, *args, **dict_p):
         sys.exit(ok)
 
 def gwt_compile(job):
-    (module, entry_class) = job
+    """
+    web_module: where the GWT compile output should go into
+    gwt_src_module: where is the GWT source code
+    """
+    (web_module, (gwt_src_module, entry_class)) = job
     cores = 1 # parallelize not at browser permutation level, but GWT module level
-    run(module,  'com.google.gwt.dev.Compiler', '-style OBF', '-localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(module))
+    run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style OBF',  '-war ' + settings.war_dir(web_module) +    ' -localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(gwt_src_module))
 
 
 def build_gwts_in_web(module_name):
+    """
+    module_name: the web module which should define list of gwt modules in  its build file
+    """
     build(module_name)
     module = modules.mod_name_mapping[module_name]
     if hasattr(module, 'gwt_modules'):
         cores = multiprocessing.cpu_count()
-        parmap.parmap(gwt_compile, cores,  module.gwt_modules)
+        params = [ (module_name, gwt_mod) for gwt_mod in module.gwt_modules]
+        parmap.parmap(gwt_compile, cores, params)
     
 
 def jar(module):
