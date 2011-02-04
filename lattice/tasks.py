@@ -176,6 +176,7 @@ def build_gwts_in_web(module_name):
     
 
 def jar(module):
+    build(module)
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
     cls_dir = settings.class_dir(module)
     if not os.path.exists(cls_dir):
@@ -188,18 +189,12 @@ def jar(module):
 
     jar_file = '%s/%s.jar' % (settings.jar_dir(module), module)  
 
-    # only jar if classes changed
-    classes = _get_srcs_below_dir(cls_dir)
-    classes = filter(lambda x : _is_derived_out_of_date(x, jar_file), classes)
-    if len(classes) > 0:
-        cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir) 
-        print cmd
-        ok = os.system(cmd)
-        if ok != 0:
-            print ' ##### Failed to package jar file for module %s ' % (module)
-            sys.exit(ok)
-    else:
-        print "Skipped as the jar is up-to-date"
+    cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir) 
+    print cmd
+    ok = os.system(cmd)
+    if ok != 0:
+        print ' ##### Failed to package jar file for module %s ' % (module)
+        sys.exit(ok)
 
 
 def jar_all(module):
