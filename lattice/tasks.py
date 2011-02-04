@@ -145,7 +145,7 @@ def run(module, main_class, *args, **dict_p):
                 for lib in val.split(','):
                     classpath = classpath + ':' + ':'.join(pdlibs.lib_jar_files[lib])
             else:
-                java += ('-X' + key) +  val
+                java = java + ('-X' + key) + val + ' ' 
     cmd = java  + ' -cp ' + classpath + " "  + main_class + ' ' + ' '.join(args)
     print cmd
     ok = os.system(cmd)
@@ -154,20 +154,29 @@ def run(module, main_class, *args, **dict_p):
         sys.exit(ok)
 
 def gwt_compile(job):
-    (module, entry_class) = job
+    """
+    web_module: where the GWT compile output should go into
+    gwt_src_module: where is the GWT source code
+    """
+    (web_module, (gwt_src_module, entry_class)) = job
     cores = 1 # parallelize not at browser permutation level, but GWT module level
-    run(module,  'com.google.gwt.dev.Compiler', '-style OBF', '-localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(module))
+    run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style OBF',  '-war ' + settings.war_dir(web_module) +    ' -localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(gwt_src_module))
 
 
 def build_gwts_in_web(module_name):
+    """
+    module_name: the web module which should define list of gwt modules in  its build file
+    """
     build(module_name)
     module = modules.mod_name_mapping[module_name]
     if hasattr(module, 'gwt_modules'):
         cores = multiprocessing.cpu_count()
-        parmap.parmap(gwt_compile, cores,  module.gwt_modules)
+        params = [ (module_name, gwt_mod) for gwt_mod in module.gwt_modules]
+        parmap.parmap(gwt_compile, cores, params)
     
 
 def jar(module):
+    build(module)
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
     cls_dir = settings.class_dir(module)
     if not os.path.exists(cls_dir):
@@ -180,18 +189,12 @@ def jar(module):
 
     jar_file = '%s/%s.jar' % (settings.jar_dir(module), module)  
 
-    # only jar if classes changed
-    classes = _get_srcs_below_dir(cls_dir)
-    classes = filter(lambda x : _is_derived_out_of_date(x, jar_file), classes)
-    if len(classes) > 0:
-        cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir) 
-        print cmd
-        ok = os.system(cmd)
-        if ok != 0:
-            print ' ##### Failed to package jar file for module %s ' % (module)
-            sys.exit(ok)
-    else:
-        print "Skipped as the jar is up-to-date"
+    cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir) 
+    print cmd
+    ok = os.system(cmd)
+    if ok != 0:
+        print ' ##### Failed to package jar file for module %s ' % (module)
+        sys.exit(ok)
 
 
 def jar_all(module):

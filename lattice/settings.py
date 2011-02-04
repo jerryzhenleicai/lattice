@@ -17,6 +17,9 @@ def src_dir(module):
 def class_dir(module):
     return module + os.sep + class_output
 
+def war_dir(module):
+    return module + os.sep + war_tmp_folder
+
 def jar_dir(module):
     return module + os.sep + jar_output
 
