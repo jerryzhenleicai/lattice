@@ -89,11 +89,7 @@ def _compile(mod):
             
     cmd = 'javac -g -encoding utf-8  %s -d %s %s' % (classpath, class_output,  ' '.join(java_srcs))
     if options.verbose:
-        max_cmp_len = 1000 
-        if len(cmd) < max_cmp_len or options.debug:
-            print cmd
-        else:
-            print cmd[:max_cmp_len/2] + ' ... ' + cmd[-max_cmp_len/2:]
+        print cmd
 
     if not options.dry_run:
         ok = os.system(cmd)
@@ -160,7 +156,7 @@ def gwt_compile(job):
     """
     (web_module, (gwt_src_module, entry_class)) = job
     cores = 1 # parallelize not at browser permutation level, but GWT module level
-    run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style OBF',  '-war ' + settings.war_dir(web_module) +    ' -localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(gwt_src_module))
+    run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style OBF',  '-war ' + settings.war_dir(web_module) + os.sep + 'gwt -localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(gwt_src_module))
 
 
 def build_gwts_in_web(module_name):
@@ -176,7 +172,7 @@ def build_gwts_in_web(module_name):
     
 
 def jar(module):
-    build(module)
+    _compile(module)
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
     cls_dir = settings.class_dir(module)
     if not os.path.exists(cls_dir):
@@ -221,13 +217,10 @@ def junit(module, main_class, *args, **dict_p):
     # TODO where to put junit.jar?
 
 
-
-def war0(module, web_root_dir=settings.web_root):
+def war_jars(module, web_root_dir=settings.web_root):
     """
-    web_root root folder of the web files (HTML JSP etc)
-    Return: list of WEB-INF/lib jars in the staging directory
+    build all jars of dependent modules and copy to buid/war/WEB-INF/lib
     """
-    # verify web root
     web_root = module + os.path.sep + web_root_dir
     if not os.path.isdir(web_root):
         print ' ####  The web root dir %s is not an existing directory ' % web_root
@@ -244,35 +237,40 @@ def war0(module, web_root_dir=settings.web_root):
         if not os.path.exists(jar_file):
             print "Jar file required for building WAR does not exist : %s, Rebuilding %s.jar and all its dependent module jars. " % (jar_file, module)
             jar_all(module)
-    
+
+    web_inf_lib_dir =  settings.war_dir(module) + os.path.sep + 'WEB-INF' + os.path.sep + 'lib'
+    if not os.path.isdir(web_inf_lib_dir):
+        os.makedirs(web_inf_lib_dir)
+
+    print '----- Prepare jars in the war file '
+    print 'These jars will be copied into the WEB-INF/lib directory :', web_inf_jars
+    for jar_file in web_inf_jars:
+        shutil.copyfile(jar_file, web_inf_lib_dir + os.path.sep + os.path.basename(jar_file))
+
+
+
+def war_web_content(module, web_root_dir=settings.web_root):
+    """
+    web_root_dir: root folder of the web files (HTML JSP etc)
+    Will prepare all files in the war staging dir, including the jars , short of zip up the final .war file
+    """
+    # verify web root
+    web_root = module + os.path.sep + web_root_dir
     
     # create the staging directory for WAR
-    war_staging_dir = module + os.path.sep + settings.war_tmp_folder
+    war_staging_dir = settings.war_dir(module)
     if os.path.exists(war_staging_dir):
         print ' ---- deleting staging dir %s' % war_staging_dir
         shutil.rmtree(war_staging_dir)
     # copy all jars to WEB-INF/lib
     print '----- Copy all files under %s to staging dir %s ' % (web_root , war_staging_dir)
     shutil.copytree(web_root, war_staging_dir)
-    web_inf_lib_dir = war_staging_dir + os.path.sep + 'WEB-INF' + os.path.sep + 'lib'
-    os.makedirs(web_inf_lib_dir)
+    # copy the web inf jars
+    war_jars(module, web_root_dir)
 
-    
-    print '----- Prepare jars in the war file '
-    for jar_file in web_inf_jars:
-        shutil.copyfile(jar_file, web_inf_lib_dir + os.path.sep + os.path.basename(jar_file))
-    return web_inf_jars
-
-def war(module, web_root_dir=settings.web_root):
-    """
-    create a war file where all the dependent module and library jars are put under WEB-INF/lib
-
-    web_root root folder of the web files (HTML JSP etc)
-    """
-    web_inf_jars = war0(module, web_root_dir)
-    print 'These jars will be copied into the WEB-INF/lib directory :', web_inf_jars
+def pack_war(module,  web_root_dir=settings.web_root):
     war_file = module + os.path.sep + settings.war_output + os.path.sep + module + '.war'
-    war_staging_dir = module + os.path.sep + settings.war_tmp_folder
+    war_staging_dir = settings.war_dir(module)
     cmd = 'jar cf %s -C %s .' % (war_file, war_staging_dir)
     print cmd
     ok = os.system(cmd)
@@ -281,7 +279,22 @@ def war(module, web_root_dir=settings.web_root):
         sys.exit(ok)
     else:
         print ' ----- Successfully built %s ' % war_file
-    # delete staging dir ? 
-    #shutil.rmtree(
 
 
+
+def war(module, web_root_dir=settings.web_root):
+    """
+    create a war file where all the dependent module and library jars are put under WEB-INF/lib
+
+    web_root root folder of the web files (HTML JSP etc)
+    """
+    war_web_content(module, web_root_dir)
+    pack_war(module, web_root_dir)
+
+
+def gwt_war(module):
+    """
+    """
+    war_web_content(module)
+    build_gwts_in_web(module)
+    pack_war(module)
