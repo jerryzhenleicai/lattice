@@ -7,7 +7,7 @@ from modules import  collect_dependencies, find_all_mods
 import inspect
     
 
-def run_task(module_name, task, args):
+def run_task(module_name, task, named_args):
     """
     Run a task for a module
 
@@ -16,15 +16,15 @@ def run_task(module_name, task, args):
     Parameter module name of the module
     """
     module = __import__(module_name)
-
+    
     if hasattr(module, task):
         task_method = getattr(module, task)
         task_method(module_name)
     elif hasattr(tasks, task):
         task_method = getattr(tasks, task)
-        if not args is None:
-            print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(args)
-            task_method(module_name, args)
+        if not named_args is None:
+            print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(named_args)
+            task_method(module_name, [], **named_args)
         else:
             task_method(module_name)
     else:
@@ -121,7 +121,13 @@ if __name__ == '__main__':
         print 'Libraries it depends on (including indirect ones): %s.' % ','.join(libs)
     elif not options.run_task is None:
         tasks.options = options
-        run_task(mod, options.run_task, options.task_args)
+        args = dict()
+        if not options.task_args is None:
+            argclauses = options.task_args.split(',')
+            for clause in argclauses:
+                (key, val) = clause.split('=')
+                args[key] = val
+        run_task(mod, options.run_task, args)
     else :
         p.print_help()
     

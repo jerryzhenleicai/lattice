@@ -99,7 +99,7 @@ def _compile(mod):
 
 
     
-def build(mod):
+def build(mod,  *args, **dict_p):
     """
     Compile a module, recursively compile all other modules this module depends on first in the correct order
     """
@@ -154,12 +154,22 @@ def gwt_compile(job):
     web_module: where the GWT compile output should go into
     gwt_src_module: where is the GWT source code
     """
-    (web_module, (gwt_src_module, entry_class)) = job
+    (web_module, (gwt_src_module, entry_class), dict_p) = job
     cores = 1 # parallelize not at browser permutation level, but GWT module level
-    run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style OBF',  '-war ' + settings.war_dir(web_module) + os.sep + 'gwt -localWorkers ' + str(cores), entry_class, mx='500m', extra_class_path=settings.src_dir(gwt_src_module))
+    jvm_mem = '500m'
+    gwt_style = 'OBF'
+    print 'args', dict_p
+    if len(dict_p) > 0:
+        for (key, val) in dict_p.items():
+            if key == 'mx':
+                jvm_mem = val
+            elif key == 'style':
+                gwt_style = val
+                
+    run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style ' + gwt_style, '-war ' + settings.war_dir(web_module) + os.sep + 'gwt -localWorkers ' + str(cores), entry_class, mx=jvm_mem, extra_class_path=settings.src_dir(gwt_src_module) )
 
 
-def build_gwts_in_web(module_name):
+def build_gwts(module_name, *args, **dict_p):
     """
     module_name: the web module which should define list of gwt modules in  its build file
     """
@@ -167,11 +177,11 @@ def build_gwts_in_web(module_name):
     module = modules.mod_name_mapping[module_name]
     if hasattr(module, 'gwt_modules'):
         cores = multiprocessing.cpu_count()
-        params = [ (module_name, gwt_mod) for gwt_mod in module.gwt_modules]
+        params = [ (module_name, gwt_mod, dict_p) for gwt_mod in module.gwt_modules]
         parmap.parmap(gwt_compile, cores, params)
     
 
-def jar(module):
+def jar(module,  *args, **dict_p):
     _compile(module)
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
     cls_dir = settings.class_dir(module)
@@ -207,7 +217,7 @@ def clean_local(module):
             shutil.rmtree(cdir)
     
     
-def clean(module):
+def clean(module, *args, **dict_p):
     _transitive_op_core(clean_local, module, [])
 
 
@@ -292,9 +302,9 @@ def war(module, web_root_dir=settings.web_root):
     pack_war(module, web_root_dir)
 
 
-def gwt_war(module):
+def gwt_war(module, *args, **dict_p):
     """
     """
     war_web_content(module)
-    build_gwts_in_web(module)
+    build_gwts(module, args,dict_p)
     pack_war(module)
