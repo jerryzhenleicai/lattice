@@ -146,8 +146,7 @@ def run(module, main_class, *args, **dict_p):
     print cmd
     ok = os.system(cmd)
     if ok != 0:
-        print ' ##### Failed to run class %s for module %s, have you built the module first? ' % (main_class, module)
-        sys.exit(ok)
+        raise Exception(' ##### Failed to run class %s for module %s, have you built the module first? ' % (main_class, module))
 
 def gwt_compile(job):
     """
@@ -158,6 +157,7 @@ def gwt_compile(job):
     cores = 1 # parallelize not at browser permutation level, but GWT module level
     jvm_mem = '500m'
     gwt_style = 'OBF'
+    print 'args', dict_p
     if len(dict_p) > 0:
         for (key, val) in dict_p.items():
             if key == 'mx':
@@ -258,12 +258,14 @@ def war_jars(module, web_root_dir=settings.web_root):
 
 
 
-def war_web_content(module, web_root_dir=settings.web_root):
+def war_web_content(module, web_root_dir = settings.web_root):
     """
     web_root_dir: root folder of the web files (HTML JSP etc)
     Will prepare all files in the war staging dir, including the jars , short of zip up the final .war file
     """
     # verify web root
+    if web_root_dir is None:
+        web_root_dir = settings.web_root
     web_root = module + os.path.sep + web_root_dir
     
     # create the staging directory for WAR
@@ -291,14 +293,14 @@ def pack_war(module,  web_root_dir=settings.web_root):
 
 
 
-def war(module, web_root_dir=settings.web_root):
+def war(module, *args, **dict_p):
     """
     create a war file where all the dependent module and library jars are put under WEB-INF/lib
 
     web_root root folder of the web files (HTML JSP etc)
     """
-    war_web_content(module, web_root_dir)
-    pack_war(module, web_root_dir)
+    war_web_content(module)
+    pack_war(module)
 
 
 def gwt_war(module, *args, **dict_p):
