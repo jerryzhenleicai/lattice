@@ -24,7 +24,7 @@ def run_task(module_name, task, named_args):
         task_method = getattr(tasks, task)
         if not named_args is None:
             print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(named_args)
-            task_method(module_name, None, **named_args)
+            task_method(module_name,  **named_args)
         else:
             task_method(module_name)
     else:
