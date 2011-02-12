@@ -19,16 +19,16 @@ def run_task(module_name, task, named_args):
     
     if hasattr(module, task):
         task_method = getattr(module, task)
-        task_method(module_name)
     elif hasattr(tasks, task):
         task_method = getattr(tasks, task)
-        if not named_args is None:
-            print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(named_args)
-            task_method(module_name,  **named_args)
-        else:
-            task_method(module_name)
     else:
         raise Exception('neither module %s nor system tasks has task %s defined' %  (module_name, task))
+
+    if len(named_args) > 0:
+        print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(named_args)
+        task_method(module_name,  **named_args)
+    else:
+        task_method(module_name)
 
 def expand_mods():
     """
@@ -113,8 +113,8 @@ if __name__ == '__main__':
         
     if mod[-1] == os.path.sep:
         mod = mod[:-1]
-        
-    if options.show_dependencies:
+    
+    if options.show_dependencies :
         dummy, deps, libs = collect_dependencies(mod)
         print 'Listing dependencies of module %s: ' % mod
         print 'Modules it depends on (including indirect ones): %s.' % ','.join(deps)
@@ -127,6 +127,7 @@ if __name__ == '__main__':
             for clause in argclauses:
                 (key, val) = clause.split('=')
                 args[key] = val
+               
         run_task(mod, options.run_task, args)
     else :
         p.print_help()
