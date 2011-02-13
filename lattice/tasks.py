@@ -9,14 +9,12 @@ options = None
 
 def _transitive_op_core(op, module, excludes):
     """
-    Remove all non-source dirs
-    """
+    apply the function op to module and all its dependencies, unless the module is in the excludes list
+   """
     if module in excludes:
         return
     op(module)
     excludes.append(module)
-    
-    # recursive transitive_op all dep modules
     map(lambda x : _transitive_op_core(op, x, excludes), modules.find_direct_dependencies(module))
 
 def _get_srcs_below_dir(dir, ext = None):
@@ -60,6 +58,8 @@ def _compile(mod):
             shutil.copytree(resource_dir, class_output)
     
     classpath = modules.get_class_path_for_mod(mod)
+    junit_jar = os.path.join(os.path.dirname(__file__),'junit.jar')
+    classpath += ':' + junit_jar
     if len(classpath) > 0 :
         classpath = '-cp ' + classpath
 
@@ -97,8 +97,6 @@ def _compile(mod):
             print ' ##### Failed to compile module %s ' % mod
             sys.exit(ok)
 
-
-    
 def build(mod,  *args, **dict_p):
     """
     Compile a module, recursively compile all other modules this module depends on first in the correct order
@@ -127,6 +125,12 @@ def build(mod,  *args, **dict_p):
     map(_compile, sorted_mods)
 
 def run(module, main_class, *args, **dict_p):
+    """
+    named params:  
+       extra_class_path :
+       run_libs : extra run time libraries
+       others: treated as -X<...> JVM parameters 
+    """
     # ensure module has already been compiled
     build(module)
     print 'Running Java class %s in module %s\n' % (main_class, module)
@@ -220,11 +224,12 @@ def clean(module, *args, **dict_p):
     _transitive_op_core(clean_local, module, [])
 
 
-def junit(module, main_class, *args, **dict_p):
+def junit(module, test_class):
     # assume module has already been compiled
-    print 'Not implemented Running test %s in module %s\n' % (main_class, module)
-    # TODO where to put junit.jar?
-
+    junit_jar = os.path.join(os.path.dirname(__file__),'junit.jar')
+    # TODO search for test_class in this module if full package not provided
+    print 'Running test %s in module %s\n' % (test_class, module)
+    run(module, 'org.junit.runner.JUnitCore', test_class,  extra_class_path = junit_jar)
 
 def war_jars(module, web_root_dir=settings.web_root):
     """
