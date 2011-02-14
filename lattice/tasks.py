@@ -161,7 +161,6 @@ def gwt_compile(job):
     cores = 1 # parallelize not at browser permutation level, but GWT module level
     jvm_mem = '500m'
     gwt_style = 'OBF'
-    print 'args', dict_p
     if len(dict_p) > 0:
         for (key, val) in dict_p.items():
             if key == 'mx':
