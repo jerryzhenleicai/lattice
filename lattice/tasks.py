@@ -9,12 +9,14 @@ options = None
 
 def _transitive_op_core(op, module, excludes):
     """
-    apply the function op to module and all its dependencies, unless the module is in the excludes list
-   """
+    Remove all non-source dirs
+    """
     if module in excludes:
         return
     op(module)
     excludes.append(module)
+    
+    # recursive transitive_op all dep modules
     map(lambda x : _transitive_op_core(op, x, excludes), modules.find_direct_dependencies(module))
 
 def _get_srcs_below_dir(dir, ext = None):
@@ -58,8 +60,6 @@ def _compile(mod):
             shutil.copytree(resource_dir, class_output)
     
     classpath = modules.get_class_path_for_mod(mod)
-    junit_jar = os.path.join(os.path.dirname(__file__),'junit.jar')
-    classpath += ':' + junit_jar
     if len(classpath) > 0 :
         classpath = '-cp ' + classpath
 
@@ -97,6 +97,8 @@ def _compile(mod):
             print ' ##### Failed to compile module %s ' % mod
             sys.exit(ok)
 
+
+    
 def build(mod,  *args, **dict_p):
     """
     Compile a module, recursively compile all other modules this module depends on first in the correct order
@@ -125,12 +127,6 @@ def build(mod,  *args, **dict_p):
     map(_compile, sorted_mods)
 
 def run(module, main_class, *args, **dict_p):
-    """
-    named params:  
-       extra_class_path :
-       run_libs : extra run time libraries
-       others: treated as -X<...> JVM parameters 
-    """
     # ensure module has already been compiled
     build(module)
     print 'Running Java class %s in module %s\n' % (main_class, module)
@@ -161,6 +157,7 @@ def gwt_compile(job):
     cores = 1 # parallelize not at browser permutation level, but GWT module level
     jvm_mem = '500m'
     gwt_style = 'OBF'
+    print 'args', dict_p
     if len(dict_p) > 0:
         for (key, val) in dict_p.items():
             if key == 'mx':
@@ -183,8 +180,7 @@ def build_gwts(module_name, *args, **dict_p):
         parmap.parmap(gwt_compile, cores, params)
     
 
-def jar(module,  *args, **dict_p):
-    _compile(module)
+def _jar(module,  *args, **dict_p):
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
     cls_dir = settings.class_dir(module)
     if not os.path.exists(cls_dir):
@@ -209,7 +205,8 @@ def jar_all(module):
     """
     Jar the module and all its dependent modules recursively
     """
-    _transitive_op_core(jar, module, [])
+    build(module)
+    _transitive_op_core(_jar, module, [])
 
 
 def clean_local(module):
@@ -223,12 +220,11 @@ def clean(module, *args, **dict_p):
     _transitive_op_core(clean_local, module, [])
 
 
-def junit(module, test_class):
+def junit(module, main_class, *args, **dict_p):
     # assume module has already been compiled
-    junit_jar = os.path.join(os.path.dirname(__file__),'junit.jar')
-    # TODO search for test_class in this module if full package not provided
-    print 'Running test %s in module %s\n' % (test_class, module)
-    run(module, 'org.junit.runner.JUnitCore', test_class,  extra_class_path = junit_jar)
+    print 'Not implemented Running test %s in module %s\n' % (main_class, module)
+    # TODO where to put junit.jar?
+
 
 def war_jars(module, web_root_dir=settings.web_root):
     """
