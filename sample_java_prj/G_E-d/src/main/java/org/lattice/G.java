@@ -22,5 +22,12 @@ public class G {
 		logger.info("G.toString()");
 		return "G object, Members: [ " + e + "," + d + "]"  ;
 	}
+	
+	public static void main(String args[]) {
+		System.out.println("Args : ");
+		for (String arg  : args) {
+			System.out.println("\t" + arg);
+		}
+	}
 
 }
