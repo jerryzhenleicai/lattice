@@ -129,7 +129,7 @@ def build(mod,  *args, **dict_p):
 def run(module, main_class, *args, **dict_p):
     # ensure module has already been compiled
     build(module)
-    print 'Running Java class %s in module %s\n' % (main_class, module)
+    print 'Running Java class %s in module %s with args %s \n' % (main_class, module, str(dict_p))
     classpath = modules.get_class_path_for_mod(module) 
     # assume any named args are JVM options
     java = 'java '
@@ -140,6 +140,8 @@ def run(module, main_class, *args, **dict_p):
             elif key == 'run_libs' : # extra run time only libraries
                 for lib in val.split(','):
                     classpath = classpath + ':' + ':'.join(pdlibs.lib_jar_files[lib])
+            elif key[:2] == '-D':
+                java = java +  key + '=' +  val + ' '                 
             else:
                 java = java + ('-X' + key) + val + ' ' 
     cmd = java  + ' -cp ' + classpath + " "  + main_class + ' ' + ' '.join(args)
@@ -220,10 +222,11 @@ def clean(module, *args, **dict_p):
     _transitive_op_core(clean_local, module, [])
 
 
-def junit(module, main_class, *args, **dict_p):
+def junit(module,  *args, **dict_p):
     # assume module has already been compiled
-    print 'Not implemented Running test %s in module %s\n' % (main_class, module)
-    # TODO where to put junit.jar?
+    test_class = args[0]
+    print ' Running test %s in module %s\n' % (test_class, module)
+    run(module, 'junit.textui.TestRunner', test_class, **dict_p)
 
 
 def war_jars(module, web_root_dir=settings.web_root):

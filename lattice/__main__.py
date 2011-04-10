@@ -7,13 +7,16 @@ from modules import  collect_dependencies, find_all_mods
 import inspect
     
 
-def run_task(module_name, task, named_args):
+def run_task(module_name, task, position_args, named_args):
     """
     Run a task for a module
 
     First search in the module definition file for the task name, if found then execute the task according to the task definition, otherwise search the built-in system tasks in tasks.py
 
-    Parameter module name of the module
+    Parameters:
+         module_name name of the module
+         task name of task
+         position args
     """
     try :
         module = __import__(module_name)
@@ -26,9 +29,10 @@ def run_task(module_name, task, named_args):
         task_method(module_name)
     elif hasattr(tasks, task):
         task_method = getattr(tasks, task)
-        if not named_args is None:
-            print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(named_args)
-            task_method(module_name,  **named_args)
+        if not position_args is None:
+            print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(position_args) + str(named_args)
+            #print module_name
+            task_method(module_name,  *position_args, **named_args)
         else:
             task_method(module_name)
     else:
@@ -126,12 +130,17 @@ if __name__ == '__main__':
     elif not options.run_task is None:
         tasks.options = options
         args = dict()
+        named_args = {}
+        pos_args = []
         if not options.task_args is None:
             argclauses = options.task_args.split(',')
             for clause in argclauses:
-                (key, val) = clause.split('=')
-                args[key] = val
-        run_task(mod, options.run_task, args)
+                if clause.find('=') != -1:
+                    (key, val) = clause.split('=')
+                    named_args[key] = val
+                else:
+                    pos_args.append(clause)
+        run_task(mod, options.run_task, pos_args, named_args)
     else :
         p.print_help()
     
