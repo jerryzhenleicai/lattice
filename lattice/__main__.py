@@ -24,19 +24,21 @@ def run_task(module_name, task, position_args, named_args):
         print "Invalid module name " + module_name
         sys.exit(1)
         
+    task_method = None
     if hasattr(module, task):
         task_method = getattr(module, task)
-        task_method(module_name)
     elif hasattr(tasks, task):
         task_method = getattr(tasks, task)
+    else:
+        raise Exception('neither module %s nor system tasks has task %s defined' %  (module_name, task))
+    
+    if not task_method is None:
         if not position_args is None:
             print 'Running task %s on module %s ' % (task, module_name) + ' with args ' + str(position_args) + str(named_args)
             #print module_name
             task_method(module_name,  *position_args, **named_args)
         else:
             task_method(module_name)
-    else:
-        raise Exception('neither module %s nor system tasks has task %s defined' %  (module_name, task))
 
 def expand_mods():
     """

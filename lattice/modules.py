@@ -82,21 +82,25 @@ def get_class_path_for_mod(mod, jar_only = False):
     dep_libs = mod_dep_libs[mod]
     # first add all the libraries
     if len(dep_libs) == 0:
-        classpath = ""
+        lib_classpath = ""
     else:
         jar_files = []
         for lib in dep_libs:
             jar_files += pdlibs.lib_jar_files[lib]
             
-        classpath = (":".join(jar_files))
+        lib_classpath = ":".join(jar_files)
 
     # expand class path to dependent modules, so their classes instead of sources will be used for type info during compile
+    classpath = ""
     for dep in list(mod_dep_mods[mod]) +  [mod]:
         if jar_only:
             classpath = classpath + ':' + dep + os.sep + settings.jar_output + os.sep + dep + '.jar'
         else:
             classpath = classpath + ':' + dep + os.sep + settings.class_output
 
+
+    # be sure mod path appear before lib
+    classpath += (":" + lib_classpath)
     return classpath
        
             
