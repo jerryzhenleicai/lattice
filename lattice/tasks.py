@@ -15,7 +15,7 @@ def _transitive_op_core(op, module, excludes):
         return
     op(module)
     excludes.append(module)
-    
+
     # recursive transitive_op all dep modules
     map(lambda x : _transitive_op_core(op, x, excludes), modules.find_direct_dependencies(module))
 
@@ -37,11 +37,8 @@ def _is_class_out_of_date(src):
     return _is_derived_out_of_date(src,class_file)
 
 
-def _compile(mod):
+def _compile(mod, src_dir, resource_dir, class_output):
     module = modules.mod_name_mapping[mod]
-    src_dir = (mod + os.sep + settings.java_src)
-    resource_dir = mod + os.sep + settings.resource_src
-    class_output = settings.class_dir(mod)
 
     if not os.path.exists(class_output):
         os.makedirs(class_output)
@@ -58,7 +55,7 @@ def _compile(mod):
             if os.path.exists(class_output):
                 shutil.rmtree(class_output)
             shutil.copytree(resource_dir, class_output)
-    
+
     classpath = modules.get_class_path_for_mod(mod)
     if len(classpath) > 0 :
         classpath = '-cp ' + classpath
@@ -83,10 +80,10 @@ def _compile(mod):
     if len(java_srcs) == 0:
         print '------------------- \n No Java source code in %s need to be recompiled since they are all up-to-date' % mod
         return
-        
+
     # compile .java's that are obsolete wrt their corresponding .class files
     print '--------------------- \n Compiling %s ' % mod
-            
+
     cmd = 'javac -g -encoding utf-8  %s -d %s %s' % (classpath, class_output,  ' '.join(java_srcs))
     if options.verbose:
         print cmd
@@ -98,7 +95,17 @@ def _compile(mod):
             sys.exit(ok)
 
 
-    
+def _src_compile(mod):
+    resource_dir = mod + os.sep + settings.resource_src
+    _compile(mod, settings.src_dir(mod), resource_dir, settings.class_dir(mod))
+
+
+def _test_src_compile(mod):
+    resource_dir = mod + os.sep + settings.resource_src
+    _compile(mod, settings.test_src_dir(mod), resource_dir, settings.test_class_dir(mod))
+
+
+
 def build(mod,  *args, **dict_p):
     """
     Compile a module, recursively compile all other modules this module depends on first in the correct order
@@ -111,12 +118,12 @@ def build(mod,  *args, **dict_p):
             loop = sorted_mods[1]
             raise Exception('Sorry a circular dependency is found in modules, the loop : %s ' %   "->".join(loop))
         sorted_mods.reverse()
-        
+
         if options.verbose:
             print '+----------------------- Building %s ----------------------------------------------------- ' % mod
             print '| all modules related to %s : %s' % (mod, ", ".join(sorted_mods))
             print '| pairwise dependencies : %s' %  ",  ".join( map(lambda (x,y) : x +" -> " + y,  dep_relations) )
-        
+
     else:
         sorted_mods = [mod]
     if options.verbose:
@@ -124,13 +131,14 @@ def build(mod,  *args, **dict_p):
         print '+---------------------------------------------------------------------------------------------'
 
     # See which moduls can be built in parallel,
-    map(_compile, sorted_mods)
+    map(_src_compile, sorted_mods)
+    map(_test_src_compile, sorted_mods)
 
 def run(module, main_class, *args, **dict_p):
     # ensure module has already been compiled
     build(module)
     print 'Running Java class %s in module %s with args %s \n' % (main_class, module, str(dict_p))
-    classpath = modules.get_class_path_for_mod(module) 
+    classpath = modules.get_class_path_for_mod(module)
     # assume any named args are JVM options
     java = 'java '
     if len(dict_p) > 0:
@@ -141,9 +149,9 @@ def run(module, main_class, *args, **dict_p):
                 for lib in val.split(','):
                     classpath = classpath + ':' + ':'.join(pdlibs.lib_jar_files[lib])
             elif key[:2] == '-D':
-                java = java +  key + '=' +  val + ' '                 
+                java = java +  key + '=' +  val + ' '
             else:
-                java = java + ('-X' + key) + val + ' ' 
+                java = java + ('-X' + key) + val + ' '
     cmd = java  + ' -cp ' + classpath + " "  + main_class + ' ' + ' '.join(args)
     print cmd
     ok = os.system(cmd)
@@ -166,7 +174,7 @@ def gwt_compile(job):
                 jvm_mem = val
             elif key == 'style':
                 gwt_style = val
-                
+
     run(gwt_src_module,  'com.google.gwt.dev.Compiler', '-style ' + gwt_style, '-war ' + settings.war_dir(web_module) + os.sep + 'gwt -localWorkers ' + str(cores), entry_class, mx=jvm_mem, extra_class_path=settings.src_dir(gwt_src_module) )
 
 
@@ -180,7 +188,7 @@ def build_gwts(module_name, *args, **dict_p):
         cores = multiprocessing.cpu_count()
         params = [ (module_name, gwt_mod, dict_p) for gwt_mod in module.gwt_modules]
         parmap.parmap(gwt_compile, cores, params)
-    
+
 
 def _jar(module,  *args, **dict_p):
     print 'Creating %s.jar in %s/%s' % (module, module, settings.jar_output)
@@ -189,13 +197,13 @@ def _jar(module,  *args, **dict_p):
         print '##### No classes found in module build directory %s, unable to create jar. Maybe you need to run the build task ("-t build") first? ' % settings.class_dir(module)
         #sys.exit(1)
         return
-    
+
     if not os.path.exists(settings.jar_dir(module)):
         os.makedirs(settings.jar_dir(module))
 
-    jar_file = '%s/%s.jar' % (settings.jar_dir(module), module)  
+    jar_file = '%s/%s.jar' % (settings.jar_dir(module), module)
 
-    cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir) 
+    cmd = 'jar cf %s -C %s .' % (jar_file, cls_dir)
     print cmd
     ok = os.system(cmd)
     if ok != 0:
@@ -216,8 +224,8 @@ def clean_local(module):
     for cdir in settings.clean_dirs(module):
         if os.path.exists(cdir):
             shutil.rmtree(cdir)
-    
-    
+
+
 def clean(module, *args, **dict_p):
     _transitive_op_core(clean_local, module, [])
 
@@ -226,7 +234,9 @@ def junit(module,  *args, **dict_p):
     # assume module has already been compiled
     test_class = args[0]
     print ' Running test %s in module %s\n' % (test_class, module)
-    run(module, 'junit.textui.TestRunner', test_class, **dict_p)
+    run(module, 'junit.textui.TestRunner', test_class,\
+        extra_class_path=settings.test_class_dir(module), \
+        **dict_p)
 
 
 def war_jars(module, web_root_dir=settings.web_root):
@@ -241,7 +251,7 @@ def war_jars(module, web_root_dir=settings.web_root):
     if not options.disable_transitive_dependencies:
         build(module)
         jar_all(module)
-        
+
     # verify all dependent module/library jars have been built/exist
     all_jars = modules.get_class_path_for_mod(module, jar_only = True)
     web_inf_jars = all_jars.split(':')
@@ -270,7 +280,7 @@ def war_web_content(module, web_root_dir = settings.web_root):
     if web_root_dir is None:
         web_root_dir = settings.web_root
     web_root = module + os.path.sep + web_root_dir
-    
+
     # create the staging directory for WAR
     war_staging_dir = settings.war_dir(module)
     if os.path.exists(war_staging_dir):
