@@ -2,6 +2,7 @@
 
 import modules
 import pdlibs
+import os
 import settings
 
 ecl_prj_types = {
@@ -24,7 +25,7 @@ ecl_prj_types = {
 \t</natures>
 </projectDescription>
 """ ,  'javascript' :
-    
+
 """<?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
 \t<name>%s</name>
@@ -45,12 +46,12 @@ ecl_prj_types = {
 """
     }
 
-    
+
 
 def gen_proj(mod, lib, module):
     """
     Write the .project file
-    Return True if it's a Java or jar project 
+    Return True if it's a Java or jar project
     """
     if lib :
         fdir = settings.lib_path + '/' + mod
@@ -64,11 +65,11 @@ def gen_proj(mod, lib, module):
     prj.write(ecl_prj_types[etype] % mod)
     prj.close()
     return etype == 'java'
-    
+
 def gen_module(mod, dep_mods, dep_libs, dry_run = False, verbose = False):
     """
     Generate the eclipse .project and .classpath files for a module including transitive dependencies
-    
+
     Input:
        dep_mods: modules this module directly or indirectly depends on
        dep_libs: libraries  this module directly or indirectly depends on
@@ -82,15 +83,20 @@ def gen_module(mod, dep_mods, dep_libs, dry_run = False, verbose = False):
 """<?xml version="1.0" encoding="UTF-8"?>
 <classpath>
 \t<classpathentry kind="src" path="%s"/>
-\t<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 """ % (settings.java_src)
+    # test src present ?
+    if os.path.exists(settings.test_src_dir(mod)):
+        clspath += '\n\t<classpathentry kind="src" path="%s"/>' % settings.test_src
+
     # add all dependent modules as Eclipse dependent projects
     for dep in sorted(dep_mods | dep_libs):
         clspath += '\n\t<classpathentry combineaccessrules="false" kind="src" path="/%s"/>' % dep
-        
-    # add 
-    clspath += '\n\t<classpathentry kind="output" path="ecl_classes"/>'              
-    clspath += "\n</classpath>\n"              
+
+    clspath += '\n\t<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>'
+
+    # add
+    clspath += '\n\t<classpathentry kind="output" path="ecl_classes"/>'
+    clspath += "\n</classpath>\n"
     cls = open(mod + '/.classpath', 'w')
     cls.write(clspath)
     cls.close()
@@ -106,8 +112,8 @@ def gen_lib(mod, dry_run = False, verbose = False):
     # add all jars
     for jar in pdlibs.lib_jars_short[mod]:
         clspath += '\n\t<classpathentry exported="true" kind="lib" path="%s"/>' % jar
-    clspath += "\n</classpath>\n"              
+    clspath += "\n</classpath>\n"
     cls = open(settings.lib_path + '/' + mod + '/.classpath', 'w')
     cls.write(clspath)
     cls.close()
- 
+
