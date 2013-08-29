@@ -137,7 +137,7 @@ def build(mod,  *args, **dict_p):
 def run(module, main_class, *args, **dict_p):
     # ensure module has already been compiled
     build(module)
-    print 'Running Java class %s in module %s with args %s \n' % (main_class, module, str(dict_p))
+    print 'Running Java class %s in module %s with args %s and %s \n' % (main_class, module, args, str(dict_p))
     classpath = modules.get_class_path_for_mod(module)
     # assume any named args are JVM options
     java = 'java '
