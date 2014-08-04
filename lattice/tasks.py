@@ -197,6 +197,12 @@ def _jar(module,  *args, **dict_p):
         print '##### No classes found in module build directory %s, unable to create jar. Maybe you need to run the build task ("-t build") first? ' % settings.class_dir(module)
         #sys.exit(1)
         return
+    # delete java and javax package from cls_dir if any
+    if os.path.exists(os.path.join(cls_dir, 'java')):
+        shutil.rmtree(os.path.join(cls_dir, 'java'))
+    if os.path.exists(os.path.join(cls_dir, 'javax')):
+        shutil.rmtree(os.path.join(cls_dir, 'javax'))
+
 
     if not os.path.exists(settings.jar_dir(module)):
         os.makedirs(settings.jar_dir(module))
